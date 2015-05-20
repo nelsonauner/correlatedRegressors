@@ -195,7 +195,7 @@ It would be better to draw conclusions from more than one observation!
     }
 
 
-    testMethod <- function(significantMethod=returnCoeffecients, corr=seq(0,.95,by=.05),true_effect=(1:10), n_obs=20,n_sim=10) {
+    testMethod <- function(significantMethod=returnCoeffecients, corr=seq(0,.95,by=.05),true_effect=(1:10), n_obs=20,n_sim=50) {
       #input: significantMethod function
       #corr: numeric vector correlation of the two variables
       #true_effect: numeric vector of true effects to measure.
@@ -243,7 +243,7 @@ It would be better to draw conclusions from more than one observation!
     }
 
     binaryClassification <- function(model_null,model_alt) {  
-      (model_null < .05) + (model_alt > .05) %>%
+      (model_null < .05) + (model_alt > .05) %>% `/`(2) %>%
       return
       }
 
@@ -258,19 +258,17 @@ It would be better to draw conclusions from more than one observation!
       temp <- 
       df %>% 
         mutate(true_null=0) %>%
-        mutate(loss = binaryClassification(model_null,model_alt)) %>%
+        mutate(loss = binaryClassification(model_null,model_alt))  %>%
          group_by(corr,true_effect,n_obs) %>%
         mutate(true_null = 0) %>%
-        summarise(meanLoss = sum(loss)/n())
-      print(head(temp))
-      
-       toPlot <- temp[c("corr","true_effect","meanLoss")] %>% 
-         spread(true_effect,meanLoss)
-       row.labels <- toPlot$corr #corr values
-       
-       plotNow <-  toPlot[,2:11] %>% as.matrix
-       row.names(plotNow) = row.labels
-         heatmap(plotNow,Rowv=NA,Colv=NA,col=cm.colors(256),scale="column",margins=c(5,10))
+        summarise(errorRate = sum(loss)/n())
+    #    toPlot <- temp[c("corr","true_effect","meanLoss")] %>% 
+    #      spread(true_effect,meanLoss)
+    #    row.labels <- toPlot$corr #corr values
+    #    
+    #    plotNow <-  toPlot[,2:11] %>% as.matrix
+    #    row.names(plotNow) = row.labels
+    #      heatmap(plotNow,Rowv=NA,Colv=NA,col=cm.colors(256),scale="column",margins=c(5,10))
       return(temp)
 
     }
@@ -291,31 +289,18 @@ It would be better to draw conclusions from more than one observation!
     ## 
     ##     extract
 
-    ## Source: local data frame [6 x 4]
-    ## Groups: corr, true_effect
-    ## 
-    ##   corr true_effect n_obs meanLoss
-    ## 1    0           1    20      0.1
-    ## 2    0           2    20      0.1
-    ## 3    0           3    20      0.2
-    ## 4    0           4    20      0.2
-    ## 5    0           5    20      0.2
-    ## 6    0           6    20      0.3
-
-![](./correlatedRegressors_files/figure-markdown_strict/unnamed-chunk-4-1.png)
-
     head(sim_res)
 
     ## Source: local data frame [6 x 4]
     ## Groups: corr, true_effect
     ## 
-    ##   corr true_effect n_obs meanLoss
-    ## 1    0           1    20      0.1
-    ## 2    0           2    20      0.1
-    ## 3    0           3    20      0.2
-    ## 4    0           4    20      0.2
-    ## 5    0           5    20      0.2
-    ## 6    0           6    20      0.3
+    ##   corr true_effect n_obs errorRate
+    ## 1    0           1    20      0.09
+    ## 2    0           2    20      0.07
+    ## 3    0           3    20      0.09
+    ## 4    0           4    20      0.07
+    ## 5    0           5    20      0.04
+    ## 6    0           6    20      0.08
 
     save(sim_res,file="heatmap.RData")
 
@@ -328,3 +313,12 @@ It would be better to draw conclusions from more than one observation!
     # 
     # heatmap(toPlot[,2:20],Rowv=NA,Colv=NA,col=cm.colors(256),scale="column",margins=c(5,10))
     #   heatmap.2(Rowv = FALSE,Colv=FALSE,dendrogram="none")
+    library(ggplot2)
+    ggplot(sim_res %>% arrange(-corr),aes(x=corr,y=true_effect,fill=errorRate)) +
+             theme_bw() + 
+             geom_tile() + 
+             geom_text(aes(label=paste(errorRate))) + 
+             scale_fill_gradient2(midpoint=0, low="#B2182B", high="#2166AC") + 
+      ggtitle("Rate of incorrect coeffecient inference by looking at p values")
+
+![](./correlatedRegressors_files/figure-markdown_strict/plotCode-1.png)

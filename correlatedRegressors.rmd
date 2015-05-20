@@ -21,7 +21,7 @@ Some things to consider:
 
 
 ------------
-
+  
 ##Setup
 
 Let's use the following setup to test
@@ -38,7 +38,7 @@ $Y \sim N(V_1 + V_2,1)$
 
 We test both under the null hypothesis that $V_2$ contains no additional information ($V_{2 null}$) and the alternative hypothesis in which $V2$ does contain information ($V_{2 alt}$)
 
-```{r,createSampleData,message=FALSE}
+```{r createSampleData,message=FALSE}
 library(MASS)
 library(magrittr)
 library(dplyr)
@@ -117,7 +117,7 @@ I wouldn't recommend this approach.
 ##Simulations
 
 It would be better to draw conclusions from more than one observation!
-```{r}
+```{r simulationCode, cache=TRUE}
 #todo!
 
 singleSimulation <- function(corr,true_effect,n_obs) {
@@ -153,7 +153,7 @@ returnPValue <- function(linear_model) {
 }
 
 
-testMethod <- function(significantMethod=returnCoeffecients, corr=seq(0,.95,by=.05),true_effect=(1:10), n_obs=20,n_sim=10) {
+testMethod <- function(significantMethod=returnCoeffecients, corr=seq(0,.95,by=.05),true_effect=(1:10), n_obs=20,n_sim=50) {
   #input: significantMethod function
   #corr: numeric vector correlation of the two variables
   #true_effect: numeric vector of true effects to measure.
@@ -192,7 +192,7 @@ euclideanDistance <- function(x,y) {
 }
 
 binaryClassification <- function(model_null,model_alt) {  
-  (model_null < .05) + (model_alt > .05) %>%
+  (model_null < .05) + (model_alt > .05) %>% `/`(2) %>%
   return
   }
 
@@ -207,19 +207,17 @@ createHeatMap <- function(df,lossFunction=binaryClassification,only_n_obs=20) {
   temp <- 
   df %>% 
     mutate(true_null=0) %>%
-    mutate(loss = binaryClassification(model_null,model_alt)) %>%
+    mutate(loss = binaryClassification(model_null,model_alt))  %>%
      group_by(corr,true_effect,n_obs) %>%
     mutate(true_null = 0) %>%
-    summarise(meanLoss = sum(loss)/n())
-  print(head(temp))
-  
-   toPlot <- temp[c("corr","true_effect","meanLoss")] %>% 
-     spread(true_effect,meanLoss)
-   row.labels <- toPlot$corr #corr values
-   
-   plotNow <-  toPlot[,2:11] %>% as.matrix
-   row.names(plotNow) = row.labels
-     heatmap(plotNow,Rowv=NA,Colv=NA,col=cm.colors(256),scale="column",margins=c(5,10))
+    summarise(errorRate = sum(loss)/n())
+#    toPlot <- temp[c("corr","true_effect","meanLoss")] %>% 
+#      spread(true_effect,meanLoss)
+#    row.labels <- toPlot$corr #corr values
+#    
+#    plotNow <-  toPlot[,2:11] %>% as.matrix
+#    row.names(plotNow) = row.labels
+#      heatmap(plotNow,Rowv=NA,Colv=NA,col=cm.colors(256),scale="column",margins=c(5,10))
   return(temp)
 
 }
@@ -230,7 +228,7 @@ save(sim_res,file="heatmap.RData")
 
 ```
 
-```{r}
+```{r plotCode}
 
 # toPlot <- sim_res %>% 
 #   dplyr::select(corr,true_effect,meanLoss) %>%
@@ -241,4 +239,11 @@ save(sim_res,file="heatmap.RData")
 # 
 # heatmap(toPlot[,2:20],Rowv=NA,Colv=NA,col=cm.colors(256),scale="column",margins=c(5,10))
 #   heatmap.2(Rowv = FALSE,Colv=FALSE,dendrogram="none")
+library(ggplot2)
+ggplot(sim_res %>% arrange(-corr),aes(x=corr,y=true_effect,fill=errorRate)) +
+         theme_bw() + 
+         geom_tile() + 
+         geom_text(aes(label=paste(errorRate))) + 
+         scale_fill_gradient2(midpoint=0, low="#B2182B", high="#2166AC") + 
+  ggtitle("Rate of incorrect coeffecient inference by looking at p values")
 ```
