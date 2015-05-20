@@ -38,6 +38,8 @@ $Y \sim N(V_1 + V_2,1)$
 
 We test both under the null hypothesis that $V_2$ contains no additional information ($V_{2 null}$) and the alternative hypothesis in which $V2$ does contain information ($V_{2 alt}$)
 
+We simulate data using the mathematical setup described above. 
+
 ```{r createSampleData,message=FALSE}
 library(MASS)
 library(magrittr)
@@ -60,10 +62,15 @@ simulateData <- function(V2coef=1,corr=.9,n=20) {
 
 sampleData <- simulateData()
 with(sampleData,
-     plot(Y,V1))
+     plot(sampleData[c("Y","V1","V2_alt","V2_null")])
+     )
 ```
 
-Inspecting the linear models, you'd probably be surprised to see
+So, from the plot, we see that positive relationships between outcome $Y$, the standard business metric $V1$, as well as between $Y$ and the new business metric $V2$, in both cases. 
+
+The main takeaway from this graph should be that $Y$ vs $V2_alt$ and $Y$ vs $V2_null$ look similar, even though $V2_null$ has no relationship on $Y$ when controlling for $V1$, while $V2_alt$ does. 
+
+If you were to run a linear model on a model with all of these variables, you might be surprised to note that
 
 ```{r, linearModels}
 simulation <- list(data = sampleData)
@@ -78,7 +85,9 @@ attach(simulation$results) #just for this demo
 summary(fullModel)$coef
 ```
 So, the new variable $V2$ is significant but your old variable $V1$ no longer is...
-My first thought would be to use ANOVA:
+
+
+My first answer recommendation would be to use ANOVA:
 
 
 ```{r} 
@@ -101,27 +110,35 @@ summary(v2_alt_ResidModel)$coef
 v2_null_ResidModel <- lm(resid(v1Model) ~ sampleData$V2_null -1 )
 summary(v2_null_ResidModel)$coef
 ```
-I wouldn't recommend this approach.
+I wouldn't recommend this approach!
 
 
 
-##Followup Questions!
+##Followup Questions
 
-1. looking at linear model coeffecients is safe/not safe (pick one)
+1. looking at linear model coeffecients and p-values is safe/not safe (pick one)
 
 2. ANOVA is better/not better
 
 3. We could compare procedures by using what metrics?
 
 
-##Simulations
+##Investigation through Simulation
 
-It would be better to draw conclusions from more than one observation!
-```{r simulationCode, cache=TRUE}
-#todo!
+The following code builds a framework to simulate datasets and test different decision criteria with custom loss functions. 
+
+There were a couple of goals in making this code base: 
+
+1. Improve my ability to structure an analysis pipeline
+
+2. Build out an example of inference via simulation
+
+3. Prepare a framework that I (or other people) can build off of for answering this question
+
+```{r simulationCode, cache=TRUE,message=FALSE}
 
 singleSimulation <- function(corr,true_effect,n_obs) {
-  #input:  
+  #input: corr: number s.t. 0 < corr< 1, true_effect any number, n_obs any integer > 0  
   #output: a list with two linear models
   data <- simulateData(V2coef = true_effect,corr = corr,n=n_obs)
   res <- list()
@@ -130,28 +147,20 @@ singleSimulation <- function(corr,true_effect,n_obs) {
   return(res)
 }
 
-# testWithPValue <- function(linear_model) {
-#   #input: a single linear model)
-#   #output: p-value associated with ..? 
-#   (summary(linear_model)$coef[,colnames(summary(linear_model)$coef)=="Pr(>|t|)"]) %>%
-#     return
-# }
-
 returnCoeffecients <- function(linear_model) {
   #input: a single linear model
-  #output: two coeffecients
+  #output: coeffecients of V2_alt and V2_null
   linear_model$coef[3] %>% #[c("V2_alt","V2_null")] %>% // only return one?? 
     return
 }
 
 returnPValue <- function(linear_model) {
+  #input: a single linear model
+  #output: the p-value of coeffecient of 3rd variable
   temp <- linear_model %>% summary %>% `$`(coef) %>% `[`(3,4)
   #print(linear_model)
   return(temp)
-  
-  
 }
-
 
 testMethod <- function(significantMethod=returnCoeffecients, corr=seq(0,.95,by=.05),true_effect=(1:10), n_obs=20,n_sim=50) {
   #input: significantMethod function
@@ -184,19 +193,20 @@ testMethod <- function(significantMethod=returnCoeffecients, corr=seq(0,.95,by=.
 }
 
 res<-testMethod(significantMethod=returnPValue)
-head(res)
 save(res,file="res.RData")
 
 euclideanDistance <- function(x,y) {
+  # sample loss function
   return(sqrt(sum((x-y)^2)))
 }
 
 binaryClassification <- function(model_null,model_alt) {  
+  # sample loss function
   (model_null < .05) + (model_alt > .05) %>% `/`(2) %>%
   return
   }
 
-# create a summary
+
 createHeatMap <- function(df,lossFunction=binaryClassification,only_n_obs=20) {
   library(gplots)
   library(tidyr)
@@ -207,43 +217,39 @@ createHeatMap <- function(df,lossFunction=binaryClassification,only_n_obs=20) {
   temp <- 
   df %>% 
     mutate(true_null=0) %>%
-    mutate(loss = binaryClassification(model_null,model_alt))  %>%
+    mutate(loss = lossFunction(model_null,model_alt))  %>%
      group_by(corr,true_effect,n_obs) %>%
     mutate(true_null = 0) %>%
     summarise(errorRate = sum(loss)/n())
-#    toPlot <- temp[c("corr","true_effect","meanLoss")] %>% 
-#      spread(true_effect,meanLoss)
-#    row.labels <- toPlot$corr #corr values
-#    
-#    plotNow <-  toPlot[,2:11] %>% as.matrix
-#    row.names(plotNow) = row.labels
-#      heatmap(plotNow,Rowv=NA,Colv=NA,col=cm.colors(256),scale="column",margins=c(5,10))
   return(temp)
 
 }
 
 sim_res <- createHeatMap(res,lossFunction=binaryClassification)
-head(sim_res)
+# head(sim_res)
 save(sim_res,file="heatmap.RData")
 
 ```
 
-```{r plotCode}
+Finally, we put everything together into a heatmap that visualizes our error metric in terms of the correlation between $V1$ and $V2$, and the true value of $V2$. 
 
-# toPlot <- sim_res %>% 
-#   dplyr::select(corr,true_effect,meanLoss) %>%
-#   tidyr::spread(corr,meanLoss) %>%
-#   data.matrix 
-# 
-# row.names(toPlot) <- toPlot[,1]
-# 
-# heatmap(toPlot[,2:20],Rowv=NA,Colv=NA,col=cm.colors(256),scale="column",margins=c(5,10))
-#   heatmap.2(Rowv = FALSE,Colv=FALSE,dendrogram="none")
+In this example, the error rate is the **false positive rate** + **false negative rate**.
+Higher values are bad. 
+
+Lesson: be careful with correlated regressors!
+
+Possible solutions:
+ - [PCA](https://tgmstat.wordpress.com/2013/11/28/computing-and-visualizing-pca-in-r/)
+ - [ANOVA](http://vassarstats.net/textbook/ch13pt1.html) (if you only care about is a variable significant or not)
+
+
+```{r plotCode,message=FALSE}
 library(ggplot2)
-ggplot(sim_res %>% arrange(-corr),aes(x=corr,y=true_effect,fill=errorRate)) +
+ggplot(sim_res %>% arrange(-corr,-true_effect),aes(x=corr,y=true_effect,fill=errorRate)) +
          theme_bw() + 
          geom_tile() + 
-         geom_text(aes(label=paste(errorRate))) + 
+  xlab("Corr(V1,V2)") + 
+  ylab(expression(beta['V2'])) +
          scale_fill_gradient2(midpoint=0, low="#B2182B", high="#2166AC") + 
-  ggtitle("Rate of incorrect coeffecient inference by looking at p values")
+  ggtitle("Error Rate of coeffecient inference on V2 by looking at p values")
 ```
