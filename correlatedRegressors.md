@@ -50,7 +50,7 @@ hypothesis in which *V*2 does contain information
 
     createSigma <- function(corr=.9) {
     Sigma <- diag(4) 
-    Sigma[1,2] = Sigma[2,1] = .9
+    Sigma[1,2] = Sigma[2,1] = corr
     return(Sigma)
     }
 
@@ -165,7 +165,7 @@ It would be better to draw conclusions from more than one observation!
     singleSimulation <- function(corr,true_effect,n_obs) {
       #input:  
       #output: a list with two linear models
-      data <- simulateData(V2coef = true_effect,corr = cor,n=n_obs)
+      data <- simulateData(V2coef = true_effect,corr = corr,n=n_obs)
       res <- list()
       res$model_null <- lm(Y~V1 + V2_null,data=data)
       res$model_alt <- lm(Y~V1 + V2_alt,data=data)
@@ -229,12 +229,12 @@ It would be better to draw conclusions from more than one observation!
     head(res)
 
     ##   corr true_effect n_obs n_sim model_null    model_alt
-    ## 1 0.00           1    20     1  0.7918351 0.0129043945
-    ## 2 0.05           1    20     1  0.5945826 0.9576066819
-    ## 3 0.10           1    20     1  0.1545579 0.0109504294
-    ## 4 0.15           1    20     1  0.6091482 0.0004814217
-    ## 5 0.20           1    20     1  0.3770710 0.1512967351
-    ## 6 0.25           1    20     1  0.3968821 0.5714061035
+    ## 1 0.00           1    20     1  0.7656842 9.872919e-04
+    ## 2 0.05           1    20     1  0.8401805 2.844744e-02
+    ## 3 0.10           1    20     1  0.3777230 6.972508e-06
+    ## 4 0.15           1    20     1  0.5425000 5.727797e-05
+    ## 5 0.20           1    20     1  0.2773326 4.995899e-04
+    ## 6 0.25           1    20     1  0.3403232 8.531485e-03
 
     save(res,file="res.RData")
 
@@ -295,12 +295,12 @@ It would be better to draw conclusions from more than one observation!
     ## Groups: corr, true_effect
     ## 
     ##   corr true_effect n_obs meanLoss
-    ## 1    0           1    20      0.9
-    ## 2    0           2    20      0.8
-    ## 3    0           3    20      0.3
-    ## 4    0           4    20      0.7
-    ## 5    0           5    20      0.6
-    ## 6    0           6    20      0.7
+    ## 1    0           1    20      0.1
+    ## 2    0           2    20      0.1
+    ## 3    0           3    20      0.2
+    ## 4    0           4    20      0.2
+    ## 5    0           5    20      0.2
+    ## 6    0           6    20      0.3
 
     head(sim_res)
 
@@ -308,12 +308,12 @@ It would be better to draw conclusions from more than one observation!
     ## Groups: corr, true_effect
     ## 
     ##   corr true_effect n_obs meanLoss
-    ## 1    0           1    20      0.9
-    ## 2    0           2    20      0.8
-    ## 3    0           3    20      0.3
-    ## 4    0           4    20      0.7
-    ## 5    0           5    20      0.6
-    ## 6    0           6    20      0.7
+    ## 1    0           1    20      0.1
+    ## 2    0           2    20      0.1
+    ## 3    0           3    20      0.2
+    ## 4    0           4    20      0.2
+    ## 5    0           5    20      0.2
+    ## 6    0           6    20      0.3
 
     save(sim_res,file="heatmap.RData")
 

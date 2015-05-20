@@ -1,5 +1,5 @@
 ---
-output: md_document
+output: html_document
 ---
 
 ##Searching for significance in correlated variables
@@ -46,7 +46,7 @@ set.seed(5000)
 
 createSigma <- function(corr=.9) {
 Sigma <- diag(4) 
-Sigma[1,2] = Sigma[2,1] = .9
+Sigma[1,2] = Sigma[2,1] = corr
 return(Sigma)
 }
 
@@ -123,7 +123,7 @@ It would be better to draw conclusions from more than one observation!
 singleSimulation <- function(corr,true_effect,n_obs) {
   #input:  
   #output: a list with two linear models
-  data <- simulateData(V2coef = true_effect,corr = cor,n=n_obs)
+  data <- simulateData(V2coef = true_effect,corr = corr,n=n_obs)
   res <- list()
   res$model_null <- lm(Y~V1 + V2_null,data=data)
   res$model_alt <- lm(Y~V1 + V2_alt,data=data)
@@ -213,13 +213,13 @@ createHeatMap <- function(df,lossFunction=binaryClassification,only_n_obs=20) {
     summarise(meanLoss = sum(loss)/n())
   print(head(temp))
   
-#   toPlot <- temp %>% 
-#     select(corr,true_effect,meanLoss) %>%
-#     spread(true_effect,meanLoss) %>%
-#   row.labels <- toPlot[,1] #corr values
-#   toPlot %>% as.matrix %>%
-#     heatmap.2(.,Rowv=NULL,Colv=NULL,dendogram="none",trace="none",
-#               key=FALSE,labCol=row.labels,cexCol=1)
+   toPlot <- temp[c("corr","true_effect","meanLoss")] %>% 
+     spread(true_effect,meanLoss)
+   row.labels <- toPlot$corr #corr values
+   
+   plotNow <-  toPlot[,2:11] %>% as.matrix
+   row.names(plotNow) = row.labels
+     heatmap(plotNow,Rowv=NA,Colv=NA,col=cm.colors(256),scale="column",margins=c(5,10))
   return(temp)
 
 }
