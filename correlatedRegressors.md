@@ -264,13 +264,13 @@ It would be better to draw conclusions from more than one observation!
         summarise(meanLoss = sum(loss)/n())
       print(head(temp))
       
-    #   toPlot <- temp %>% 
-    #     select(corr,true_effect,meanLoss) %>%
-    #     spread(true_effect,meanLoss) %>%
-    #   row.labels <- toPlot[,1] #corr values
-    #   toPlot %>% as.matrix %>%
-    #     heatmap.2(.,Rowv=NULL,Colv=NULL,dendogram="none",trace="none",
-    #               key=FALSE,labCol=row.labels,cexCol=1)
+       toPlot <- temp[c("corr","true_effect","meanLoss")] %>% 
+         spread(true_effect,meanLoss)
+       row.labels <- toPlot$corr #corr values
+       
+       plotNow <-  toPlot[,2:11] %>% as.matrix
+       row.names(plotNow) = row.labels
+         heatmap(plotNow,Rowv=NA,Colv=NA,col=cm.colors(256),scale="column",margins=c(5,10))
       return(temp)
 
     }
@@ -301,6 +301,8 @@ It would be better to draw conclusions from more than one observation!
     ## 4    0           4    20      0.2
     ## 5    0           5    20      0.2
     ## 6    0           6    20      0.3
+
+![](./correlatedRegressors_files/figure-markdown_strict/unnamed-chunk-4-1.png)
 
     head(sim_res)
 
